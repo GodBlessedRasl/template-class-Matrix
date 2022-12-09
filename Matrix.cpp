@@ -74,21 +74,21 @@ public:
 	}
 	//copy constructor
 	template<typename T2>
-	Matrix(Matrix<T2>& other) {
+	Matrix(const Matrix<T2>& other) {
 		//check<T2>();
-		N_ = other.getN();
-		M_ = other.getM();
+		N_ = other.N_;
+		M_ = other.M_;
 		mas_ = new T[N_ * M_];
 		for (size_t i = 0; i < N_; i++) {
 			for (size_t j = 0; j < M_; j++) {
-				mas_[i * M_ + j] = static_cast<T>(other.getMas()[i * M_ + j]);
+				mas_[i * M_ + j] = static_cast<T>(other.mas_[i * M_ + j]);
 			}
 		}
 	}
 
 	// assignment operator
 	template<typename T2>
-	Matrix& operator=(Matrix<T2>& other) {
+	Matrix& operator=(const Matrix<T2>& other) {
 		//check<T2>();
 		if (this != reinterpret_cast<Matrix<T>*>(& other)) {
 			delete[] mas_;
@@ -106,7 +106,6 @@ public:
 
 	//move constructor
 	Matrix(Matrix&& other) noexcept{
-		//check<T2>();
 		delete[] mas_;
 		mas_ = new T[other.getN() * other.getM()];
 		M_ = other.getM();
@@ -124,7 +123,6 @@ public:
 	//move operator
 	template<typename T2>
 	Matrix<T>& operator=(Matrix<T2>&& other)  noexcept {
-		//check<T2>();
 		if (this != &other) {
 			delete[] mas_;
 			mas_ = new T[other.N_ * other.M_];
@@ -273,7 +271,7 @@ public:
 
 	// multiplication of matrices operator
 	template<typename T2>
-	friend Matrix operator * (const Matrix& matrix, const Matrix<T2>& other) {
+	friend Matrix operator * (Matrix& matrix, Matrix<T2>& other) {
 		//matrix.check<T2>();
 		try {
 			if (!(matrix.N_ == other.getM())) {
