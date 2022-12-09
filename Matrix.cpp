@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <type_traits>
 
-typedef std::common_type<unsigned char, short, int, const int>::type NumericType;
+typedef std::common_type<unsigned char, short, int, short int>::type NumericType;
 typedef std::common_type<float, double>::type FloatType;
 
 template<typename T = double>
@@ -41,7 +41,7 @@ public:
 	
 	template<typename T2>
 	Matrix(std::initializer_list<T2>& lst) {
-		//check<T2>();
+		check<T2>();
 		N_ = 1;
 		M_ = lst.size();
 		mas_ = new T[M_];
@@ -52,7 +52,7 @@ public:
 
 	template<typename T2>
 	Matrix(std::initializer_list<std::initializer_list<T2>>& lst) {
-		//check<T2>();
+		check<T2>();
 		N_ = lst.size();
 		M_ = (*lst.begin()).size();
 		mas_ = new T[N_ * M_];
@@ -74,14 +74,15 @@ public:
 	}
 	//copy constructor
 	template<typename T2>
-	Matrix(const Matrix<T2>& other) {
+	Matrix(Matrix<T2>& other) {
 		//check<T2>();
-		N_ = other.N_;
-		M_ = other.M_;
+		//std::cout << typeid(T2).name() << "\n\n";
+		N_ = other.getN();
+		M_ = other.getM();
 		mas_ = new T[N_ * M_];
 		for (size_t i = 0; i < N_; i++) {
 			for (size_t j = 0; j < M_; j++) {
-				mas_[i * M_ + j] = static_cast<T>(other.mas_[i * M_ + j]);
+				mas_[i * M_ + j] = static_cast<T>(other.getMas()[i * M_ + j]);
 			}
 		}
 	}
@@ -90,7 +91,6 @@ public:
 	template<typename T2>
 	Matrix& operator=(const Matrix<T2>& other) {
 		//check<T2>();
-		if (this != reinterpret_cast<Matrix<T>*>(& other)) {
 			delete[] mas_;
 			mas_ = new T[other.getN() * other.getM()];
 			M_ = other.getM();
@@ -100,12 +100,12 @@ public:
 					mas_[i * M_ + j] = other.getMas()[i * M_ + j];
 				}
 			}
-		}
 		return *this;
 	}
 
 	//move constructor
 	Matrix(Matrix&& other) noexcept{
+		//check<T2>();
 		delete[] mas_;
 		mas_ = new T[other.getN() * other.getM()];
 		M_ = other.getM();
@@ -122,8 +122,9 @@ public:
 
 	//move operator
 	template<typename T2>
-	Matrix<T>& operator=(Matrix<T2>&& other)  noexcept {
-		if (this != &other) {
+	Matrix& operator=(Matrix<T2>&& other)  noexcept {
+		//check<T2>();
+		if (this != reinterpret_cast<Matrix<T>*>(&other)) {
 			delete[] mas_;
 			mas_ = new T[other.N_ * other.M_];
 			M_ = other.M_;
@@ -183,7 +184,7 @@ public:
 	template<typename T2>
 	friend Matrix operator + (const Matrix& matrix, const Matrix<T2>& other) {
 		//matrix.check<T2>();
-		std::cout << typeid(T2).name() << "\n\n";
+		//std::cout << typeid(T2).name() << "\n\n";
 		try {
 			if (!(matrix.N_ == other.getN() && matrix.M_ == other.getM())) {
 				std::exception error("mismatched sizes");
@@ -205,7 +206,7 @@ public:
 
 	// operator +=
 	template<typename T2>
-	Matrix<T>& operator += (Matrix<T2> other) {
+	Matrix& operator += (Matrix<T2> other) {
 		//check<T2>();
 		try {
 			if (!(N_ == other.getN() && M_ == other.getM())) {
@@ -228,7 +229,7 @@ public:
 	template<typename T2>
 	friend Matrix operator - (const Matrix& matrix, const Matrix<T2>& other) {
 		//matrix.check<T2>();
-		std::cout << typeid(T2).name() << "\n\n";
+		//std::cout << typeid(T2).name() << "\n\n";
 		try {
 			if (!(matrix.N_ == other.getN() && matrix.M_ == other.getM())) {
 				std::exception error("mismatched sizes");
@@ -250,7 +251,7 @@ public:
 
 	// operator -=
 	template<typename T2>
-	Matrix<T>& operator -= (Matrix<T2> other) {
+	Matrix& operator -= (Matrix<T2> other) {
 		//check<T2>();
 		try {
 			if (!(N_ == other.getN() && M_ == other.getM())) {
@@ -271,19 +272,19 @@ public:
 
 	// multiplication of matrices operator
 	template<typename T2>
-	friend Matrix operator * (Matrix& matrix, Matrix<T2>& other) {
+	Matrix operator * (const Matrix<T2>& other) {
 		//matrix.check<T2>();
 		try {
-			if (!(matrix.N_ == other.getM())) {
+			if (!(N_ == other.getM())) {
 				std::exception error("mismatched sizes");
 				throw error;
 			}
-			Matrix result(matrix.N_, other.getM());
-			for (size_t i = 0; i < matrix.N_; i++) {
+			Matrix result(N_, other.getM());
+			for (size_t i = 0; i < N_; i++) {
 				for (size_t j = 0; j < other.getM(); j++) {
 					result.mas_[i * result.M_ + j] = 0;
 					for (size_t k = 0; k < other.getN(); k++) {
-						result.mas_[i * result.M_ + j] += matrix.mas_[i * matrix.M_ + k]
+						result.mas_[i * result.M_ + j] += mas_[i * M_ + k]
 							* static_cast<T>(other.getMas()[k * other.getM() + j]);
 					}
 				}
@@ -295,9 +296,10 @@ public:
 		}
 	}
 
+
 	// multiplication of matrix and number operator
 	template<typename T2>
-	Matrix<T> operator * (T2 num) {
+	Matrix operator * (T2 num) {
 		//check<T2>();
 		Matrix result(N_, M_);
 		for (size_t i = 0; i < N_; i++) {
@@ -310,7 +312,7 @@ public:
 
 	// *=
 	template<typename T2>
-	Matrix<T>& operator *= (T2 num) {
+	Matrix& operator *= (T2 num) {
 		check<T2>();
 		for (size_t i = 0; i < N_; i++) {
 			for (size_t j = 0; j < M_; j++) {
@@ -333,6 +335,7 @@ int main() {
 	std::initializer_list<std::initializer_list<int>> b_lst = { {1,1}, {2,2}, {3,3} };
 	Matrix<int>b(b_lst);
 	int k = 4;
+	b *= 4;
 	Matrix<short>c = b;
 	std::cout << c;
 
@@ -345,7 +348,8 @@ int main() {
 	// int список инициализации в double матрицу
 	std::initializer_list<std::initializer_list<int>> d_lst = { {1, 2}, {3, 4}, {5, 6} };
 	Matrix<double> m_d(d_lst);
-	Matrix<double> ans = m * m_d;
+	// произведение векторов
+	Matrix<int>ans = m * m_d;
 	std::cout << ans;
 	// double список инициализации в int матрицу
 	std::initializer_list<std::initializer_list<double>> e_lst = { {1.1, 2.2, 3.3}, {4.4, 5.5, 6.6} };
