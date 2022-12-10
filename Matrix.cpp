@@ -10,11 +10,11 @@
 typedef std::common_type<unsigned char, short, int, short int>::type NumericType;
 typedef std::common_type<float, double>::type FloatType;
 
-template<typename T = double>
+template<typename T>
 class Matrix {
 public:
 
-	template<typename T2>
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
 	void check() {
 		try {
 			if (std::is_same<T2, NumericType>::value == false && std::is_same<T2, FloatType>::value == false) {
@@ -28,19 +28,38 @@ public:
 		}
 	}
 
-	Matrix(const int n) {
-		N_ = n;
-		M_ = 1;
+	size_t getN() const {
+		return N_;
+	}
+	size_t getM() const {
+		return M_;
+	}
+	void setN(const size_t N) {
+		N_ = N;
+	}
+	void setM(const size_t M) {
+		M_ = M;
+	}
+	void setMas(T& mas) {
+		mas_ = mas;
+	}
+	T* getMas() const {
+		return mas_;
+	}
+
+	Matrix<T>(const int n) {
+		setN(n);
+		setM(1);
 		mas_ = new T[n];
 	}
-	Matrix(const int n, const int m) {
-		N_ = n;
-		M_ = m;
+	Matrix<T>(const int n, const int m) {
+		setN(n);
+		setM(m);
 		mas_ = new T[N_ * M_];
 	}
 	
-	template<typename T2>
-	Matrix(std::initializer_list<T2>& lst) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>(std::initializer_list<T2>& lst) {
 		check<T2>();
 		N_ = 1;
 		M_ = lst.size();
@@ -50,8 +69,8 @@ public:
 		}
 	}
 
-	template<typename T2>
-	Matrix(std::initializer_list<std::initializer_list<T2>>& lst) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>(std::initializer_list<std::initializer_list<T2>>& lst) {
 		check<T2>();
 		N_ = lst.size();
 		M_ = (*lst.begin()).size();
@@ -63,18 +82,9 @@ public:
 		}
 	}
 
-	size_t getN() const{
-		return N_;
-	}
-	size_t getM() const{
-		return M_;
-	}
-	T* getMas() const{
-		return mas_;
-	}
 	//copy constructor
-	template<typename T2>
-	Matrix(Matrix<T2>& other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>(Matrix<T2>& other) {
 		//check<T2>();
 		//std::cout << typeid(T2).name() << "\n\n";
 		N_ = other.getN();
@@ -88,8 +98,8 @@ public:
 	}
 
 	// assignment operator
-	template<typename T2>
-	Matrix& operator=(const Matrix<T2>& other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>& operator=(const Matrix<T2>& other) {
 		//check<T2>();
 			delete[] mas_;
 			mas_ = new T[other.getN() * other.getM()];
@@ -104,7 +114,8 @@ public:
 	}
 
 	//move constructor
-	Matrix(Matrix&& other) noexcept{
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>(Matrix<T2>&& other) noexcept{
 		//check<T2>();
 		delete[] mas_;
 		mas_ = new T[other.getN() * other.getM()];
@@ -112,31 +123,31 @@ public:
 		N_ = other.getN();
 		for (size_t i = 0; i < other.getN(); ++i) {
 			for (size_t j = 0; j < other.getM(); ++j) {
-				mas_[i * M_ + j] = other.getMas()[i * M_ + j];
+				mas_[i * M_ + j] = static_cast<T>(other.getMas()[i * M_ + j]);
 			}
 		}
-		delete[] other.mas_;
-		other.M_ = 0;
-		other.N_ = 0;
+		other.setMas(nullptr);
+		other.setM(0);
+		other.setN(0);
 	}
 
 	//move operator
-	template<typename T2>
-	Matrix& operator=(Matrix<T2>&& other)  noexcept {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>& operator=(Matrix<T2>&& other)  noexcept {
 		//check<T2>();
 		if (this != reinterpret_cast<Matrix<T>*>(&other)) {
 			delete[] mas_;
 			mas_ = new T[other.N_ * other.M_];
-			M_ = other.M_;
-			N_ = other.N_;
+			M_ = other.getM();
+			N_ = other.getN();
 			for (size_t i = 0; i < other.N_; ++i) {
 				for (size_t j = 0; j < other.M_; ++j) {
 					mas_[i * M_ + j] = static_cast<T>(other.mas_[i * M_ + j]);
 				}
 			}
-			delete[] other.mas_;
-			other.M_ = 0;
-			other.N_ = 0;
+			other.setMas(nullptr);
+			other.setM(0);
+			other.setN(0);
 		}
 		return *this;
 	}
@@ -181,8 +192,8 @@ public:
 	}
 
 	// operator +
-	template<typename T2>
-	friend Matrix operator + (const Matrix& matrix, const Matrix<T2>& other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	friend Matrix<T> operator + (const Matrix& matrix, const Matrix<T2>& other) {
 		//matrix.check<T2>();
 		//std::cout << typeid(T2).name() << "\n\n";
 		try {
@@ -190,14 +201,14 @@ public:
 				std::exception error("mismatched sizes");
 				throw error;
 			}
-			Matrix result(matrix.N_, matrix.M_);
+			Matrix<T> result(matrix.N_, matrix.M_);
 			for (size_t i = 0; i < matrix.N_; i++) {
 				for (size_t j = 0; j < matrix.M_; j++) {
 					result.mas_[i * result.M_ + j] = matrix.mas_[i * matrix.M_ + j] +
 						static_cast<T>(other.getMas()[i * other.getM() + j]);
 				}
 			}
-			return Matrix(result);
+			return Matrix<T>(result);
 		}
 		catch (std::exception& err) {
 			std::cout << err.what() << "\n";
@@ -205,8 +216,8 @@ public:
 	}
 
 	// operator +=
-	template<typename T2>
-	Matrix& operator += (Matrix<T2> other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>& operator += (Matrix<T2> other) {
 		//check<T2>();
 		try {
 			if (!(N_ == other.getN() && M_ == other.getM())) {
@@ -226,8 +237,8 @@ public:
 	}
 
 	// operator -
-	template<typename T2>
-	friend Matrix operator - (const Matrix& matrix, const Matrix<T2>& other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	friend Matrix<T> operator - (const Matrix& matrix, const Matrix<T2>& other) {
 		//matrix.check<T2>();
 		//std::cout << typeid(T2).name() << "\n\n";
 		try {
@@ -235,14 +246,14 @@ public:
 				std::exception error("mismatched sizes");
 				throw error;
 			}
-			Matrix result(matrix.N_, matrix.M_);
+			Matrix<T> result(matrix.N_, matrix.M_);
 			for (size_t i = 0; i < matrix.N_; i++) {
 				for (size_t j = 0; j < matrix.M_; j++) {
 					result.mas_[i * result.M_ + j] = matrix.mas_[i * matrix.M_ + j] -
 						static_cast<T>(other.getMas()[i * other.getM() + j]);
 				}
 			}
-			return Matrix(result);
+			return Matrix<T>(result);
 		}
 		catch (std::exception& err) {
 			std::cout << err.what() << "\n";
@@ -250,8 +261,8 @@ public:
 	}
 
 	// operator -=
-	template<typename T2>
-	Matrix& operator -= (Matrix<T2> other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>& operator -= (Matrix<T2> other) {
 		//check<T2>();
 		try {
 			if (!(N_ == other.getN() && M_ == other.getM())) {
@@ -271,25 +282,25 @@ public:
 	}
 
 	// multiplication of matrices operator
-	template<typename T2>
-	Matrix operator * (const Matrix<T2>& other) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T> operator * (const Matrix<T2>& other) {
 		//matrix.check<T2>();
 		try {
 			if (!(N_ == other.getM())) {
 				std::exception error("mismatched sizes");
 				throw error;
 			}
-			Matrix result(N_, other.getM());
+			Matrix<T> result(N_, other.getM());
 			for (size_t i = 0; i < N_; i++) {
 				for (size_t j = 0; j < other.getM(); j++) {
 					result.mas_[i * result.M_ + j] = 0;
 					for (size_t k = 0; k < other.getN(); k++) {
 						result.mas_[i * result.M_ + j] += mas_[i * M_ + k]
-							* static_cast<T>(other.getMas()[k * other.getM() + j]);
+							* static_cast<NumericType>(other.getMas()[k * other.getM() + j]);
 					}
 				}
 			}
-			return Matrix(result);
+			return Matrix<T>(result);
 		}
 		catch (std::exception& err) {
 			std::cout << err.what() << "\n";
@@ -298,21 +309,21 @@ public:
 
 
 	// multiplication of matrix and number operator
-	template<typename T2>
-	Matrix operator * (T2 num) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T> operator * (T2 num) {
 		//check<T2>();
-		Matrix result(N_, M_);
+		Matrix<T> result(N_, M_);
 		for (size_t i = 0; i < N_; i++) {
 			for (size_t j = 0; j < M_; j++) {
 				result.mas_[i * M_ + j] = mas_[i * M_ + j] * static_cast<T>(num);
 			}
 		}
-		return Matrix(result);
+		return Matrix<T>(result);
 	}
 
 	// *=
-	template<typename T2>
-	Matrix& operator *= (T2 num) {
+	template<typename T2, typename = std::enable_if_t<std::is_convertible<T2, T>::value>>
+	Matrix<T>& operator *= (T2 num) {
 		check<T2>();
 		for (size_t i = 0; i < N_; i++) {
 			for (size_t j = 0; j < M_; j++) {
