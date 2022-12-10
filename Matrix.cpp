@@ -10,7 +10,7 @@
 typedef std::common_type<unsigned char, short, int, short int>::type NumericType;
 typedef std::common_type<float, double>::type FloatType;
 
-template<typename T>
+template<typename T = double>
 class Matrix {
 public:
 
